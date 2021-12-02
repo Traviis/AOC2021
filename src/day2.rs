@@ -10,6 +10,7 @@ enum Command {
 struct Pos {
     hor: i64,
     vert: i64,
+    aim: i64,
 }
 
 impl FromStr for Command {
@@ -37,7 +38,11 @@ fn parse_input(input: &str) -> Vec<Command> {
 #[aoc(day2, part1)]
 pub fn part1(input: &str) -> i64 {
     let data = parse_input(input);
-    let mut pos = Pos { hor: 0, vert: 0 };
+    let mut pos = Pos {
+        hor: 0,
+        vert: 0,
+        aim: 0,
+    };
     data.iter().for_each(|x| match x {
         Command::Forward(n) => pos.hor += n,
         Command::Down(n) => pos.vert += n,
@@ -46,14 +51,25 @@ pub fn part1(input: &str) -> i64 {
 
     pos.vert * pos.hor
 }
-
-/*
 #[aoc(day2, part2)]
-pub fn part2(input: &str) -> usize {
+pub fn part2(input: &str) -> i64 {
     let data = parse_input(input);
-    0
+    let mut pos = Pos {
+        hor: 0,
+        vert: 0,
+        aim: 0,
+    };
+    data.iter().for_each(|x| match x {
+        Command::Forward(n) => {
+            pos.hor += n;
+            pos.vert += n * pos.aim;
+        }
+        Command::Down(n) => pos.aim += n,
+        Command::Up(n) => pos.aim -= n,
+    });
+
+    pos.vert * pos.hor
 }
-*/
 
 #[cfg(test)]
 mod tests {
@@ -73,11 +89,9 @@ forward 2"
     fn example_part1() {
         assert_eq!(part1(get_test_input()), 150);
     }
-    /*
 
     #[test]
     fn example_part2() {
-        assert_eq!(part2(get_test_input()), 5);
+        assert_eq!(part2(get_test_input()), 900);
     }
-    */
 }
