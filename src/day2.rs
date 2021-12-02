@@ -1,4 +1,4 @@
-use std::num::ParseIntError;
+use std::fmt;
 use std::str::FromStr;
 
 enum Command {
@@ -13,16 +13,39 @@ struct Pos {
     aim: i64,
 }
 
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (l, v) = match self {
+            Command::Forward(n) => ("F", n),
+            Command::Down(n) => ("D", n),
+            Command::Up(n) => ("U", n),
+        };
+        write!(f, "{} [{}]", l, v)
+    }
+}
+
 impl FromStr for Command {
-    type Err = ParseIntError;
+    type Err = Box<dyn std::error::Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut strs = s.split(" ");
-        match strs.clone().nth(0).unwrap() {
-            "forward" => Ok(Command::Forward(strs.nth(1).unwrap().parse::<i64>()?)),
-            "down" => Ok(Command::Down(strs.nth(1).unwrap().parse::<i64>()?)),
-            "up" => Ok(Command::Up(strs.nth(1).unwrap().parse::<i64>()?)),
-            _ => panic!("Unknown command"),
+        match strs.next().ok_or_else(|| "Incomplete Command")? {
+            "forward" => Ok(Command::Forward(
+                strs.next()
+                    .ok_or_else(|| "Incomplete Command")?
+                    .parse::<i64>()?,
+            )),
+            "down" => Ok(Command::Down(
+                strs.next()
+                    .ok_or_else(|| "Incomplete Command")?
+                    .parse::<i64>()?,
+            )),
+            "up" => Ok(Command::Up(
+                strs.next()
+                    .ok_or_else(|| "Incomplete Command")?
+                    .parse::<i64>()?,
+            )),
+            _ => Err("Unknown Command".into()),
         }
     }
 }
@@ -38,6 +61,10 @@ fn parse_input(input: &str) -> Vec<Command> {
 #[aoc(day2, part1)]
 pub fn part1(input: &str) -> i64 {
     let data = parse_input(input);
+
+    //println!("Size: {}", data.len());
+    //data.iter().for_each(|x| println!("{}", x));
+
     let mut pos = Pos {
         hor: 0,
         vert: 0,
@@ -48,6 +75,7 @@ pub fn part1(input: &str) -> i64 {
         Command::Down(n) => pos.vert += n,
         Command::Up(n) => pos.vert -= n,
     });
+    //TODO: Could probably do this with some clever fold()
 
     pos.vert * pos.hor
 }
