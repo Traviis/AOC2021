@@ -29,22 +29,15 @@ impl FromStr for Command {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut strs = s.split(" ");
-        match strs.next().ok_or_else(|| "Incomplete Command")? {
-            "forward" => Ok(Command::Forward(
-                strs.next()
-                    .ok_or_else(|| "Incomplete Command")?
-                    .parse::<i64>()?,
-            )),
-            "down" => Ok(Command::Down(
-                strs.next()
-                    .ok_or_else(|| "Incomplete Command")?
-                    .parse::<i64>()?,
-            )),
-            "up" => Ok(Command::Up(
-                strs.next()
-                    .ok_or_else(|| "Incomplete Command")?
-                    .parse::<i64>()?,
-            )),
+        let cmd = strs.next().ok_or("Incomplete Command (op)")?;
+        let val = strs
+            .next()
+            .ok_or("Incomplete Command (value)")?
+            .parse::<i64>()?;
+        match cmd {
+            "forward" => Ok(Command::Forward(val)),
+            "down" => Ok(Command::Down(val)),
+            "up" => Ok(Command::Up(val)),
             _ => Err("Unknown Command".into()),
         }
     }
@@ -58,7 +51,7 @@ fn parse_input(input: &str) -> Vec<Command> {
         .collect::<Vec<_>>()
 }
 
-#[aoc(day2, part1)]
+#[aoc(day2, part1, obj)]
 pub fn part1(input: &str) -> i64 {
     let data = parse_input(input);
 
@@ -75,10 +68,23 @@ pub fn part1(input: &str) -> i64 {
         Command::Down(n) => pos.vert += n,
         Command::Up(n) => pos.vert -= n,
     });
-    //TODO: Could probably do this with some clever fold()
 
     pos.vert * pos.hor
 }
+
+#[aoc(day2, part1, fold)]
+pub fn part1_fold(input: &str) -> i64 {
+    let data = parse_input(input);
+
+    let sum = data.iter().fold((0, 0), |(x, y), cmd| match cmd {
+        Command::Forward(n) => (x + n, y),
+        Command::Down(n) => (x, y + n),
+        Command::Up(n) => (x, y - n),
+    });
+
+    sum.0 * sum.1
+}
+
 #[aoc(day2, part2)]
 pub fn part2(input: &str) -> i64 {
     let data = parse_input(input);
@@ -116,6 +122,11 @@ forward 2"
     #[test]
     fn example_part1() {
         assert_eq!(part1(get_test_input()), 150);
+    }
+
+    #[test]
+    fn example_part1_fold() {
+        assert_eq!(part1_fold(get_test_input()), 150);
     }
 
     #[test]
