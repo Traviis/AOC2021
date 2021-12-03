@@ -7,8 +7,7 @@ pub fn part1(input: &str) -> usize {
     let data = parse_input(input);
     let mut counts = Vec::new();
     for i in 0..data[0].chars().count() {
-        let (z, o) = get_count_for_index(&data, i);
-        counts.push((z, o));
+        counts.push(get_count_for_index(&data, i));
     }
 
     let gamma_string = counts
