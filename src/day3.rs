@@ -7,19 +7,10 @@ pub fn part1(input: &str) -> usize {
     let data = parse_input(input);
     let mut counts = Vec::new();
     for i in 0..data[0].chars().count() {
-        counts.push((0, 0));
+        let (z, o) = get_count_for_index(&data, i);
+        counts.push((z, o));
     }
 
-    data.iter().for_each(|line| {
-        for (i, c) in line.chars().enumerate() {
-            match c {
-                '0' => counts[i].0 = counts[i].0 + 1,
-                '1' => counts[i].1 = counts[i].1 + 1,
-                _ => panic!("Invalid value"),
-            }
-        }
-    });
-    println!("{:?}", counts);
     let gamma_string = counts
         .iter()
         .map(|(z, o)| if z > o { '0' } else { '1' })
@@ -38,22 +29,6 @@ pub fn part1(input: &str) -> usize {
 #[aoc(day3, part2)]
 pub fn part2(input: &str) -> usize {
     let data = parse_input(input);
-    /*
-    let mut counts = Vec::new();
-    for _ in 0..data[0].chars().count() {
-        counts.push((0, 0));
-    }
-
-    data.iter().for_each(|line| {
-        for (i, c) in line.chars().enumerate() {
-            match c {
-                '0' => counts[i].0 = counts[i].0 + 1,
-                '1' => counts[i].1 = counts[i].1 + 1,
-                _ => panic!("Invalid value"),
-            }
-        }
-    });
-    */
 
     let mut o2 = data.clone();
     let mut co2 = data.clone();
@@ -62,61 +37,46 @@ pub fn part2(input: &str) -> usize {
         //Recount only the remaining
 
         if o2.iter().count() != 1 {
-            let mut o2_zeroes = 0;
-            let mut o2_ones = 0;
-
-            //TODO, do this using fold into a tuple
-            o2.iter().for_each(|x| {
-                if x.chars().nth(c_idx).unwrap() == '0' {
-                    o2_zeroes += 1;
-                } else {
-                    o2_ones += 1;
-                }
-            });
+            let (z, o) = get_count_for_index(&o2, c_idx);
 
             o2 = o2
                 .into_iter()
                 .filter(|x| {
                     //println!("{} {} {}", c_idx, o2_zeroes, o2_ones);
-                    let keep_value = if o2_zeroes <= o2_ones { '1' } else { '0' };
+                    let keep_value = if z <= o { '1' } else { '0' };
                     keep_value == x.chars().nth(c_idx).unwrap()
                 })
                 .collect::<Vec<&str>>();
-            //This is super inefficient and lazy, since we are splitting it up every run
-            //Fix this, but for now, go ahead and get it right
         }
-        //println!("o2 {:?}", o2);
 
         if co2.iter().count() != 1 {
-            let mut co2_zeroes = 0;
-            let mut co2_ones = 0;
-
-            co2.iter().for_each(|x| {
-                if x.chars().nth(c_idx).unwrap() == '0' {
-                    co2_zeroes += 1;
-                } else {
-                    co2_ones += 1;
-                }
-            });
+            let (z, o) = get_count_for_index(&co2, c_idx);
 
             co2 = co2
                 .into_iter()
                 .filter(|x| {
                     //Keep 0th if match
                     //Otherwise least common
-                    println!("{} {} {}", c_idx, co2_zeroes, co2_ones);
-                    let keep_value = if co2_zeroes <= co2_ones { '0' } else { '1' };
+                    let keep_value = if z <= o { '0' } else { '1' };
                     keep_value == x.chars().nth(c_idx).unwrap()
                 })
                 .collect::<Vec<&str>>();
-            //This is super inefficient and lazy, since we are splitting it up every run
-            println!("co2 {:?}", co2);
         }
     }
     let o2_val = usize::from_str_radix(&o2.iter().next().unwrap(), 2).unwrap();
     let co2_val = usize::from_str_radix(&co2.iter().next().unwrap(), 2).unwrap();
 
     o2_val * co2_val
+}
+
+fn get_count_for_index(vec: &Vec<&str>, idx: usize) -> (usize, usize) {
+    vec.iter().fold((0, 0), |(a, b), x| {
+        if x.chars().nth(idx).unwrap() == '0' {
+            (a + 1, b)
+        } else {
+            (a, b + 1)
+        }
+    })
 }
 
 #[cfg(test)]
