@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 #[aoc_generator(day6)]
-fn day6_parse(input: &str) -> HashMap<i64, i64> {
-    let mut starting_map: HashMap<i64, i64> = HashMap::new();
+fn day6_parse(input: &str) -> HashMap<i64, u64> {
+    let mut starting_map: HashMap<i64, u64> = HashMap::new();
     input.split(",").map(str::parse::<i64>).for_each(|val| {
         let entr = starting_map.entry(val.unwrap()).or_insert(0);
         *entr += 1;
@@ -12,15 +12,15 @@ fn day6_parse(input: &str) -> HashMap<i64, i64> {
 }
 
 #[aoc(day6, part1)]
-pub fn part1(umap: &HashMap<i64, i64>) -> i64 {
+pub fn part1(umap: &HashMap<i64, u64>) -> u64 {
     day_param(80, umap)
 }
 #[aoc(day6, part2)]
-pub fn part2(umap: &HashMap<i64, i64>) -> i64 {
+pub fn part2(umap: &HashMap<i64, u64>) -> u64 {
     day_param(256, umap)
 }
 
-pub fn day_param(sim_days: i64, umap: &HashMap<i64, i64>) -> i64 {
+pub fn day_param(sim_days: i64, umap: &HashMap<i64, u64>) -> u64 {
     let mut map = umap.clone();
     #[allow(unused_variables)]
     for day in 0..sim_days {
@@ -34,7 +34,7 @@ pub fn day_param(sim_days: i64, umap: &HashMap<i64, i64>) -> i64 {
         );
         */
         map.iter().fold(0, |a, (_, v)| {
-            (a as i64)
+            (a as u64)
                 .checked_add(*v)
                 .unwrap_or_else(|| panic!("Overflowed on day {}", day))
         }) as i64;
@@ -58,10 +58,10 @@ pub fn day_param(sim_days: i64, umap: &HashMap<i64, i64>) -> i64 {
         *zero_set = 0;
 
         let six_set = map.entry(6).or_insert(0); //Find the new 6 group and add to it
-        *six_set += zero_count as i64;
+        *six_set += zero_count as u64;
 
         let eight_set = map.entry(8).or_insert(0); //find the new 8 group and add to it
-        *eight_set += zero_count as i64;
+        *eight_set += zero_count as u64;
     }
 
     map.iter().fold(0, |a, (_, v)| a + v)
@@ -85,9 +85,10 @@ mod tests {
         assert_eq!(part2(&day6_parse(get_test_input())), 26984457539);
     }
     #[test]
-    #[should_panic]
+    //#[should_panic]
     //And just because I was curious, how fast would this exponentially run out of space, the
     //answer (for this starting set) is 482 days when it would overrun its i64.
+    //If I use a u64 instead, it's only makes it to 490 days
     fn day6_rollover_detecter() {
         day_param(99999999999999999, &day6_parse(get_test_input()));
     }
