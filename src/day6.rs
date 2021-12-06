@@ -33,6 +33,11 @@ pub fn day_param(sim_days: i64, umap: &HashMap<i64, i64>) -> i64 {
             map.iter().fold(0, |a, (_, v)| a + v)
         );
         */
+        map.iter().fold(0, |a, (_, v)| {
+            (a as i64)
+                .checked_add(*v)
+                .unwrap_or_else(|| panic!("Overflowed on day {}", day))
+        }) as i64;
 
         //Decrement
         let mut last_count = 0;
@@ -78,5 +83,12 @@ mod tests {
     #[test]
     fn day6_part2() {
         assert_eq!(part2(&day6_parse(get_test_input())), 26984457539);
+    }
+    #[test]
+    #[should_panic]
+    //And just because I was curious, how fast would this exponentially run out of space, the
+    //answer (for this starting set) is 482 days when it would overrun its i64.
+    fn day6_rollover_detecter() {
+        day_param(99999999999999999, &day6_parse(get_test_input()));
     }
 }
