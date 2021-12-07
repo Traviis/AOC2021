@@ -14,9 +14,30 @@ fn day7_parse(input: &str) -> Vec<i64> {
 pub fn part1(input: &Vec<i64>) -> u128 {
     let avg = input.iter().sum::<i64>() / input.iter().count() as i64;
     //Average is the common line
-    let min_input = input.iter().min().unwrap();
     let mut min = i64::MAX;
-    for i in *min_input..avg + 1 {
+    //I don't really have mathmatical proof that no one crab will have to move no more than
+    //average to find a solution, but it just felt like the intuitive thing to do (and it passed
+    //the test cases).
+    //
+    //Taken to an extreme, if you had 100 crabs at 1 and 1 crab at 20, the average would be
+    //~1.1881, (see test), and the required moves would be 19 because all of the 1 crabs sit
+    //and do nothing, and the 20 crab move 19 spaces to be close to 1. I still can't derive
+    //proof here of why you need only check the average distance for the set.
+    //
+    //I think you can also start at the minimum from the input set, since later when we do (x-i).abs()
+    //the minumum it can be is 0 (I required no movement). This probably also explains why you need
+    //only check the ceil(avg) inclusive. If the average line is 1.118 as in my above statement
+    //+1 in case the average is non integral and truncates. Likewise, the maximum value that can
+    //appear there is if you take the position of any one crab, and subtract the average, in this
+    //case, 19 (flooring it). Thus, there is no way to ever exceed that value due to the abs(). I'm
+    //sure there is a fancy math way to write this out, but I don't know it.
+    //
+    //If I went up to the maximum of say, 20 instead of the average I would see this equation: (20
+    //- 20).abs() which equals 0 Which is not useful, (especially since I already have it). Any
+    //number > than the max is further wasteful, since if you're trying to converage to the average
+    //line, you need not ever exceed above that difference.
+    let min_input = input.iter().min().unwrap();
+    for i in *min_input..avg + 2 {
         //Linear loss, Just sum every step; The best solution will be found by having every crab
         //move AT MOST the average distance. You could really just brute force this, there are not
         //that many numbers, but this helps out a bit.
@@ -30,10 +51,10 @@ pub fn part1(input: &Vec<i64>) -> u128 {
 pub fn part2(input: &Vec<i64>) -> u128 {
     let avg = input.iter().sum::<i64>() as f64 / input.iter().count() as f64;
     //Average is the common line
-    let min_input = input.iter().min().unwrap();
     let mut min = i64::MAX;
     // Derp, floats average can be you know non integral, can either +2 it to always be safe, or,
     // just ceiling it which does the same thing since integral division will truncate
+    let min_input = input.iter().min().unwrap();
     for i in *min_input..avg.ceil() as i64 + 1 {
         let possible_set = input
             .iter()
@@ -87,5 +108,16 @@ mod tests {
             assert_eq!(manual_sig, (n * (n + 1)) / 2);
             //All of these equations appear to be equal
         }
+    }
+
+    #[test]
+    fn test_average_intuition() {
+        let mut insane_case = vec![];
+        for _ in 0..100 {
+            insane_case.push(1);
+        }
+        insane_case.push(20);
+        assert_eq!(part1(&insane_case), 19);
+        println!("Required linear moves {}", part1(&insane_case));
     }
 }
