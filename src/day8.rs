@@ -53,23 +53,10 @@ pub fn day8_part1(input: &Vec<(Vec<String>, Vec<String>)>) -> u128 {
 
     sum
 }
-//  0:      1:      2:      3:      4:
-// aaaa    ....    aaaa    aaaa    ....
-//b    c  .    c  .    c  .    c  b    c
-//b    c  .    c  .    c  .    c  b    c
-// ....    ....    dddd    dddd    dddd
-//e    f  .    f  e    .  .    f  .    f
-//e    f  .    f  e    .  .    f  .    f
-// gggg    ....    gggg    gggg    ....
-//
-//  5:      6:      7:      8:      9:
-// aaaa    aaaa    aaaa    aaaa    aaaa
-//b    .  b    .  .    c  b    c  b    c
-//b    .  b    .  .    c  b    c  b    c
-// dddd    dddd    ....    dddd    dddd
-//.    f  e    f  .    f  e    f  .    f
-//.    f  e    f  .    f  e    f  .    f
-// gggg    gggg    ....    gggg    gggg
+
+//For 2, you have 1,3,4,7,8
+// Looking for 5 as well
+
 //
 //
 // Char => Number of segments
@@ -86,10 +73,16 @@ pub fn day8_part1(input: &Vec<(Vec<String>, Vec<String>)>) -> u128 {
 // If 6 segments, it's either 9, 6, or 0
 // if 5 segments, it's either 5, 3, or 2
 //
+
+fn and_string(a: &str, b: &str) -> String {
+    //Find only the unshared characters
+    //unique_to_a = a.chars().iter().filter(|ach| bc.iter().contains(ach));
+    let unique_a = a.chars().filter(|&ac| b.contains(ac)).collect::<String>();
+
+    unique_a
+}
 fn xor_strings(a: &str, b: &str) -> String {
     //Find only the unshared characters
-    let ac = a.chars().collect::<Vec<_>>();
-    let bc = b.chars().collect::<Vec<_>>();
     //unique_to_a = a.chars().iter().filter(|ach| bc.iter().contains(ach));
     let unique_a = a.chars().filter(|&ac| !b.contains(ac)).collect::<String>();
     let unique_b = b.chars().filter(|&bc| !a.contains(bc)).collect::<String>();
@@ -97,12 +90,20 @@ fn xor_strings(a: &str, b: &str) -> String {
     unique_a + &unique_b
 }
 
+fn sort_string_chars(st: &str) -> String {
+    let mut chars = st.chars().collect::<Vec<_>>();
+    chars.sort_by(|a, b| b.cmp(a));
+    chars.into_iter().collect::<String>()
+}
+
 #[aoc(day8, part2)]
 pub fn day8_part2(input: &Vec<(Vec<String>, Vec<String>)>) -> u128 {
     //The above commented information encoded
+    /*
     let number_to_segment_map = vec![
-        "abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg",
+    "abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg",
     ]; //Index by the number you're curious about
+    */
 
     let mut sum: u128 = 0;
     for (input, output) in input.iter() {
@@ -112,11 +113,10 @@ pub fn day8_part2(input: &Vec<(Vec<String>, Vec<String>)>) -> u128 {
         //You can determine which segment is mapped to which by knowing the sets that must be on,
         //and checking against the other ones you know
 
-        let segment_to_number_map = input
+        let mut segment_to_number_map = input
             .iter()
             .map(|x| {
                 (
-                    x.clone(),
                     match x.chars().count() {
                         //2 => number_to_segment_map[1],
                         //4 => number_to_segment_map[4],
@@ -126,20 +126,22 @@ pub fn day8_part2(input: &Vec<(Vec<String>, Vec<String>)>) -> u128 {
                         4 => 4,
                         3 => 7,
                         7 => 8,
-                        _ => 0,
+                        _ => -1,
                     },
+                    sort_string_chars(x),
                 )
             })
-            .filter(|(_, y)| *y != 0)
-            .collect::<HashMap<String, i64>>();
+            .filter(|(y, _)| *y != -1)
+            .collect::<HashMap<i64, String>>();
 
         //If you have 7 and 1, the unique value from the string corresponds to a.
         // There has got to be a better way than just doing tricks one by one.
-        let two_three_five = input
+        let mut two_three_five = input
             .iter()
             .filter(|x| x.chars().count() == 5)
+            .map(|x| x.to_string())
             .collect::<Vec<_>>();
-        let zero_six_nine = input
+        let mut zero_six_nine = input
             .iter()
             .filter(|x| x.chars().count() == 6)
             .collect::<Vec<_>>();
@@ -149,24 +151,164 @@ pub fn day8_part2(input: &Vec<(Vec<String>, Vec<String>)>) -> u128 {
         let three = two_three_five
             .iter()
             .filter(|candid| {
-                xor_strings(candid, number_to_segment_map[1])
+                //xor_strings(candid, number_to_segment_map[1])
+                xor_strings(candid, segment_to_number_map.get(&1).unwrap())
                     .chars()
                     .count()
                     == 3
             })
             .fold("", |a, i| i);
-        segment_to_number_map.entry(&three.to_string()).or_insert(3);
+
+        segment_to_number_map
+            .entry(3)
+            .or_insert(sort_string_chars(three));
+        //segment_to_number_map
+        //    .entry(sort_string_chars(three))
+        //    .or_insert(3);
+
+        two_three_five = two_three_five
+            .iter()
+            .filter(|x| x.to_string() != three)
+            .map(|x| x.clone()) //I don't care anymore
+            .collect::<Vec<_>>();
+        //1,3,4,7,8
+        //    0:      1:      2:      3:      4:
+        //   aaaa    ....    aaaa    aaaa    ....
+        //  b    c  .    c  .    c  .    c  b    c
+        //  b    c  .    c  .    c  .    c  b    c
+        //   ....    ....    dddd    dddd    dddd
+        //  e    f  .    f  e    .  .    f  .    f
+        //  e    f  .    f  e    .  .    f  .    f
+        //   gggg    ....    gggg    gggg    ....
+        //
+        //    5:      6:      7:      8:      9:
+        //   aaaa    aaaa    aaaa    aaaa    aaaa
+        //  b    .  b    .  .    c  b    c  b    c
+        //  b    .  b    .  .    c  b    c  b    c
+        //   dddd    dddd    ....    dddd    dddd
+        //  .    f  e    f  .    f  e    f  .    f
+        //  .    f  e    f  .    f  e    f  .    f
+        //   gggg    gggg    ....    gggg    gggg
+        //
+        //   4 & 2 = bcdf & acdeg = cd
+        //   4 & 5 = bcdf & abdfg = bdf
+
+        //Determine 5
+        let five = two_three_five
+            .iter()
+            //.filter(|can| and_string(can, number_to_segment_map[4]).chars().count() == 3)
+            .filter(|can| {
+                and_string(can, segment_to_number_map.get(&4).unwrap())
+                    .chars()
+                    .count()
+                    == 3
+            })
+            .fold("", |a, i| i);
+
+        segment_to_number_map
+            .entry(5)
+            .or_insert(sort_string_chars(five));
+        //segment_to_number_map
+        //    .entry(sort_string_chars(two))
+        //    .or_insert(2);
+
+        two_three_five = two_three_five
+            .iter()
+            .filter(|x| x.to_string() != five)
+            .map(|x| x.clone()) //I don't care anymore
+            .collect::<Vec<_>>();
 
         //Determine 2
-        //Determine 5
+        let two = two_three_five[0].clone();
+        segment_to_number_map
+            .entry(2)
+            .or_insert(sort_string_chars(&two));
+        //  .entry(sort_string_chars(&five))
+        //  .or_insert(5);
+
+        // Determine 9
+        let nine = zero_six_nine
+            .iter()
+            //.filter(|can| and_string(can, number_to_segment_map[3]).chars().count() == 5)
+            .filter(|can| {
+                and_string(can, segment_to_number_map.get(&3).unwrap())
+                    .chars()
+                    .count()
+                    == 5
+            })
+            .fold("!!!!!!!!!!!!!!!", |a, i| i);
+
+        zero_six_nine = zero_six_nine
+            .iter()
+            .filter(|x| x.to_string() != nine)
+            .map(|x| x.clone()) //I don't care anymore
+            .collect::<Vec<_>>();
+
+        segment_to_number_map
+            //    .entry(sort_string_chars(&nine))
+            //    .or_insert(9);
+            .entry(9)
+            .or_insert(sort_string_chars(&nine));
+
+        // Determine 0
+        let zero = zero_six_nine
+            .iter()
+            //.filter(|can| and_string(can, number_to_segment_map[7]).chars().count() == 3)
+            .filter(|can| {
+                and_string(can, segment_to_number_map.get(&7).unwrap())
+                    .chars()
+                    .count()
+                    == 3
+            })
+            .fold("", |a, i| i);
+
+        zero_six_nine = zero_six_nine
+            .iter()
+            .filter(|x| x.to_string() != zero)
+            .map(|x| x.clone()) //I don't care anymore
+            .collect::<Vec<_>>();
+
+        segment_to_number_map
+            //    .entry(sort_string_chars(&nine))
+            //    .or_insert(9);
+            .entry(0)
+            .or_insert(sort_string_chars(&zero));
+
+        // Deduce 6
+        let six = zero_six_nine[0].clone();
+        segment_to_number_map
+            // .entry(sort_string_chars(&six))
+            // .or_insert(6);
+            .entry(6)
+            .or_insert(sort_string_chars(&six));
+
+        println!("Trans Map: {:?}", segment_to_number_map);
+        // Now translate
+        let outval = output
+            .iter()
+            .map(|x| match_string(&segment_to_number_map, x).to_string())
+            .collect::<String>();
+        println!("Outval: {}", outval);
+        sum += outval.parse::<u128>().unwrap();
     }
 
-    0
+    sum
+}
+
+fn match_string(haystack: &HashMap<i64, String>, requested: &String) -> i64 {
+    println!("{:?} Looking for {}", haystack, requested);
+    let out_num = *haystack
+        .iter()
+        .find(|(_, v)| xor_strings(v, requested).chars().count() == 0)
+        .unwrap()
+        .0;
+    println!("Looking for {} found {}", requested, out_num);
+    out_num
 }
 /*
 #[aoc(day8, part2)]
 pub fn day8_part2(input: (&Vec<&str>, &Vec<&str>)) -> u128 {
-    0
+0
 }
 */
 
@@ -175,9 +317,9 @@ mod tests {
 
     use super::*;
 
+    #[warn(dead_code)]
     fn get_short_test_input() -> &'static str {
-        "be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe cefdb cefbgd gcbe
-edbfga begcd cbg gc gcadebf fbgde acbgfd abcde gfcbed gfec | fcgedb cgb dgebacf gc"
+        "acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf"
     }
     fn get_test_input() -> &'static str {
         "be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe cefdb cefbgd gcbe
@@ -193,6 +335,12 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
     }
 
     #[test]
+    fn day8_part2_test_short() {
+        //        let (input, output) = day8_parse(get_test_input());
+        //        assert_eq!(day8_part1(&(input, output)), 26);
+        assert_eq!(day8_part2(&day8_parse(get_short_test_input())), 5353);
+    }
+    #[test]
     fn day8_part1_test() {
         //        let (input, output) = day8_parse(get_test_input());
         //        assert_eq!(day8_part1(&(input, output)), 26);
@@ -200,7 +348,6 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
     }
     #[test]
     fn day8_part2_test() {
-        //Should be 168?
-        //assert_eq!(part2(&day8_parse(get_test_input())), 168);
+        assert_eq!(day8_part2(&day8_parse(get_test_input())), 61229);
     }
 }
