@@ -89,7 +89,8 @@ fn flasher(steps: i32, find_sync: bool, map: &Vec<Vec<i32>>) -> u128 {
             }
         }
 
-        //Flash all 10s (GREATER THAN 9; sneay)
+        //Flash all 10s (GREATER THAN 9; sneaky; I read that wrong and assumed it meant when it
+        //HITS 9)
         for y in 0..map.iter().count() {
             for x in 0..map[0].iter().count() {
                 if let Some(_) = flash_set.get(&(x as i32, y as i32)) {
