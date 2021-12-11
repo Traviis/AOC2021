@@ -20,9 +20,9 @@ fn inverse_char(c: char) -> char {
 pub fn day10_part1(lines: &Vec<Vec<char>>) -> u128 {
     let mut bad_chars = vec![];
 
-    'skip: for line in lines.iter() {
+    for line in lines.iter() {
         let mut stack = vec![];
-        'line: for (idx, c) in line.iter().enumerate() {
+        'line: for (_, c) in line.iter().enumerate() {
             match c {
                 '(' | '[' | '<' | '{' => stack.push(c),
                 ')' | ']' | '>' | '}' => {
@@ -69,7 +69,7 @@ pub fn day10_part2(lines: &Vec<Vec<char>>) -> u128 {
     for line in lines.iter() {
         //println!("Eval: {}", line.iter().collect::<String>());
         let mut stack = vec![];
-        'line: for (idx, c) in line.iter().enumerate() {
+        'line: for (_, c) in line.iter().enumerate() {
             match c {
                 '(' | '[' | '<' | '{' => stack.push(c),
                 ')' | ']' | '>' | '}' => {
