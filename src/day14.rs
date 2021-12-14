@@ -66,11 +66,12 @@ fn poly_map(
     //Determine frequency
     //Everything is double counted due to overlap EXCEPT for the first and last char, so just
     //correct that after you get the frequency map
-    let mut char_freq = HashMap::new();
-    poly.iter()
+    let mut char_freq = poly
+        .iter()
         .flat_map(|((a, b), n)| [(*a, *n), (*b, *n)])
-        .for_each(|(c, n)| {
-            *char_freq.entry(c).or_insert(0) += n;
+        .fold(HashMap::new(), |mut map, (c, n)| {
+            *map.entry(c).or_insert(0) += n;
+            map
         });
 
     *char_freq.get_mut(first).unwrap() += 1;
