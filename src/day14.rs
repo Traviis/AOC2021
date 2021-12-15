@@ -51,6 +51,7 @@ fn poly_map(
     let mut poly = poly.clone();
 
     for _ in 0..steps {
+        /*
         let mut new_poly = Polymer::new();
         for ((a, c), n) in poly.iter() {
             //For every item in the polymer, update the occurance map
@@ -60,6 +61,14 @@ fn poly_map(
         }
 
         poly = new_poly;
+        */
+        poly = poly.iter().fold(Polymer::new(),|mut o_map,((a,c),n)| {
+            let b = c_map[&(*a, *c)];
+            *o_map.entry((*a, b)).or_insert(0) += n;
+            *o_map.entry((b, *c)).or_insert(0) += n;
+            o_map
+
+        });
         //println!("Poly {:?}", poly);
     }
 
