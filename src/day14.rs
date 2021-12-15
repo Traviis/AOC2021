@@ -73,6 +73,7 @@ fn poly_map(
             *map.entry(c).or_insert(0) += n;
             map
         });
+    //Is folding really faster? Won't it create a new hashmap every time?
 
     *char_freq.get_mut(first).unwrap() += 1;
     *char_freq.get_mut(last).unwrap() += 1;
