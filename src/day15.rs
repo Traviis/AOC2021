@@ -83,19 +83,20 @@ pub fn day15_part1(vec_map: &Vec<Vec<i64>>) -> u128 {
         //https://www.linkedin.com/pulse/practical-dijkstras-algorithm-farruh-habibullaev
         // the u in question
 
-        //This clone probably kills me
-        //TODO: I need to figure out a way to say "Copy this shit out of the map, it's literally 3
-        //i64s, I just don't know how to make Rust give me the value without freaking out about it.
+        //TODO: Optimize this, for every single iteration here, I'm filtering on all of the
+        //dist_map. That's bad. If I remove the infinite insertion, and instead rely on the
+        //non-existence equaling infinite. Then dist_map will be orders of magnitude smaller, even
+        //if I end up iterating over it. Really, this would be best as a min-heap.
+        //
+        //TODO: 2, perhaps if I convert dist_map to a min-heap, then I can immediately pop those
+        //nodes any time (custom structure that impl Ord); The annoying thing with that is that I
+        //look for neighbor values later. Perhaps keep a map AND a min-heap?
         let (&(x, y), &v) = dist_map
             .iter()
             .filter(|((x, y), _)| !visited.contains(&(*x, *y)))
             .min_by_key(|((x, y), v)| *v)
             .unwrap()
             .clone();
-        //let ((x, y), v) = dist_map.clone()
-        //    .into_iter()
-        //    .filter(|((x, y), _)| !visited.contains(&(*x,*y)) )
-        //    .min_by_key(|((x, y), v)| *v).unwrap() ;
 
         visited.insert((x, y));
 
