@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
+type Tile = Vec<Vec<i64>>;
+
 #[aoc_generator(day15)]
-fn day15_parse(input: &str) -> Vec<Vec<i64>> {
+fn day15_parse(input: &str) -> Tile {
     input
         .lines()
         .map(|line| {
@@ -10,17 +12,11 @@ fn day15_parse(input: &str) -> Vec<Vec<i64>> {
                 .flat_map(|x| x.parse::<i64>())
                 .collect::<Vec<i64>>()
         })
-        .collect::<Vec<Vec<i64>>>()
+        .collect::<Tile>()
 }
 
 //Lame to input max_x and max_y here, but don't want to recalc every time
-fn get_adjacent_nodes(
-    vec_map: &Vec<Vec<i64>>,
-    x: i64,
-    y: i64,
-    max_x: i64,
-    max_y: i64,
-) -> Vec<(i64, i64)> {
+fn get_adjacent_nodes(vec_map: &Tile, x: i64, y: i64, max_x: i64, max_y: i64) -> Vec<(i64, i64)> {
     let transform_map = [(-1, 0), (1, 0), (0, -1), (0, 1)];
     transform_map
         .iter()
@@ -38,17 +34,92 @@ fn get_adjacent_nodes(
 }
 
 #[aoc(day15, part1)]
-pub fn day15_part1(vec_map: &Vec<Vec<i64>>) -> u128 {
+pub fn day15_part1(vec_map: &Tile) -> u128 {
+    dij(false, vec_map)
+}
+
+#[aoc(day15, part2)]
+pub fn day15_part2(vec_map: &Tile) -> u128 {
+    dij(true, vec_map)
+}
+
+fn mutate_tile(vec_map: &Tile) -> Tile {
+    // +1, wrap 10s to 1
+    let mut mut_map = vec_map.clone();
+    for y in 0..vec_map.iter().count() {
+        for x in 0..vec_map[y].iter().count() {
+            mut_map[y][x] = match vec_map[y][x] {
+                n if n < 9 => n + 1,
+                9 => 1,
+                _ => panic!(),
+            }
+        }
+    }
+
+    mut_map
+}
+
+fn expand_map(vec_map: &Tile, max_x: i64, max_y: i64) -> Tile {
+    let mut meta_map: HashMap<(usize, usize), Tile> = HashMap::new();
+    let mut meta_tile = vec_map.clone();
+
+    meta_map.insert((0,0), vec_map.clone());
+
+    //Each original vec_map is the (0,0) tile in a 5 by 5 grid
+    for meta_y in 0..5 {
+        for meta_x in 0..5 {
+            if meta_x == 0 && meta_y == 0 {
+                continue; //starting case
+            }
+            //Find the source tile, prefer left, but if it's unavailable, use top
+            let (source_x, source_y) = if meta_x == 0 {
+                (meta_x, meta_y - 1)
+            } else {
+                (meta_x - 1, meta_y)
+            };
+
+            //println!("Source to mutate: ({},{})", source_x,source_y);
+            //println!("Meta Map keys: {:?}", meta_map.keys());
+            let new_tile = mutate_tile(&meta_map.get(&(source_x, source_y)).unwrap());
+            for t_y in 0..max_y {
+                for t_x in 0..max_x {
+                    //Don't care about x, since we are pushing
+                    let cur_y = t_y as usize + (meta_y * max_y as usize);
+                    meta_tile[cur_y].push(new_tile[t_y as usize][t_x as usize]);
+                }
+            }
+
+            meta_map.insert((meta_x, meta_y), new_tile);
+        }
+
+//TODO
+        if meta_y != 4 { //Off by one error? Never heard of her 
+            for _ in 0..max_y {
+                meta_tile.push(Vec::new()); //expand down
+            }
+        }
+    }
+
+    meta_tile
+}
+
+pub fn dij(part_2: bool, vec_map: &Tile) -> u128 {
     //This is slightly modified djikstras. Each node is the (x,y) coordinate, however, the edge
     //value is actually the value of the node (and all edges coming into that node have that same
     //value
+    //
+    let mut vec_map = vec_map.clone();
 
-    //TODO: If part 2, manipulate the vec_map
+    let mut max_x = vec_map[0].iter().count() as i64;
+    let mut max_y = vec_map.iter().count() as i64;
 
-    let max_x = vec_map[0].iter().count() as i64;
-    let max_y = vec_map.iter().count() as i64;
+    if part_2 {
+        vec_map = expand_map(&vec_map, max_x, max_y);
+        max_x = vec_map[0].iter().count() as i64;
+        max_y = vec_map.iter().count() as i64;
+    }
 
-    /*
+/*
     for y in 0..max_y {
         for x in 0..max_x {
             print!("{}", vec_map[y as usize][x as usize]);
@@ -102,7 +173,7 @@ pub fn day15_part1(vec_map: &Vec<Vec<i64>>) -> u128 {
 
         //println!("Looking at Node: ({},{})", x, y);
         //Get only unvisited nodes
-        let neighbors = get_adjacent_nodes(vec_map, x, y, max_x, max_y)
+        let neighbors = get_adjacent_nodes(&vec_map, x, y, max_x, max_y)
             .into_iter()
             //Unvisited
             .filter(|(x, y)| *dist_map.get_key_value(&(*x, *y)).unwrap().1 == i64::MAX - 50)
@@ -129,11 +200,6 @@ pub fn day15_part1(vec_map: &Vec<Vec<i64>>) -> u128 {
     }
     */
     *dist_map.get(&(max_x - 1, max_y - 1)).unwrap() as u128
-}
-
-#[aoc(day15, part2)]
-pub fn day15_part2(vec_map: &Vec<Vec<i64>>) -> u128 {
-    0
 }
 
 #[cfg(test)]
