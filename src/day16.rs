@@ -160,14 +160,16 @@ impl FromStr for Packet {
                     return Err("Truncated packet determining length".into());
                 }
                 //15 bits are a number that represents the total length in bits of the sub-packets
-                let length = i64::from_str_radix(&bits[7..(7 + 15)], 2).unwrap();
+                let length = usize::from_str_radix(&bits[7..(7 + 15)], 2).unwrap();
                 //println!("Length: {}", length);
                 // We know it's length bits, but we don't know how many packets are for each 27
                 // bits could contain 1 or more packets
                 let mut idx: usize = 0;
                 //22 is start index
                 loop {
-                    if let Ok(packet) = Packet::from_str(&bits[22 + idx..]) {
+                    //TODO: Do I need to truncate the packet here if we are about to reach length?
+                    //I think so, this fails some tests, but seems more correct
+                    if let Ok(packet) = Packet::from_str(&bits[(22 + idx)..length + 22]) {
                         idx += packet.size_in_bits();
                         sub_packets.push(packet);
                         if idx > length as usize {
@@ -200,15 +202,9 @@ impl FromStr for Packet {
                         //packets?
                         //TODO: This really feels like it's a parse error if you get here, but the
                         //test fails without it.
-                        Err(_) => { bit_count += bits[18+idx..].chars().count(); break; },
+                        //Err(_) => { bit_count += bits[18+idx..].chars().count(); break; },
+                        Err(_) => { panic!() },
                     }
-                    // if let Ok(packet) =
-                    //     Packet::from_str(&bits[18 + idx..]) {
-                    //     idx += packet.size_in_bits();
-                    //     sub_packets.push(packet);
-                    // } else {
-                    //     panic!(); //We know how many packets there are supposed to be, if we fail to parse, that means this is bad data
-                    // }
                 }
             }
         }
