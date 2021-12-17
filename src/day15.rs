@@ -16,7 +16,7 @@ fn day15_parse(input: &str) -> Tile {
 }
 
 //Lame to input max_x and max_y here, but don't want to recalc every time
-fn get_adjacent_nodes(vec_map: &Tile, x: i64, y: i64, max_x: i64, max_y: i64) -> Vec<(i64, i64)> {
+fn get_adjacent_nodes(x: i64, y: i64, max_x: i64, max_y: i64) -> Vec<(i64, i64)> {
     let transform_map = [(-1, 0), (1, 0), (0, -1), (0, 1)];
     transform_map
         .iter()
@@ -141,7 +141,7 @@ pub fn dij(part_2: bool, vec_map: &Tile) -> u128 {
         for x in 0..max_x {
             //TODO: Can I perhaps skip this, and just imply it's infinite if it's not in this map?
             dist_map.entry((x, y)).or_insert(i64::MAX - 50);
-            let v = vec_map[y as usize][x as usize];
+            //let v = vec_map[y as usize][x as usize];
         }
     }
 
@@ -165,7 +165,7 @@ pub fn dij(part_2: bool, vec_map: &Tile) -> u128 {
         let (&(x, y), &v) = dist_map
             .iter()
             .filter(|((x, y), _)| !visited.contains(&(*x, *y)))
-            .min_by_key(|((x, y), v)| *v)
+            .min_by_key(|((_, _), v)| *v)
             .unwrap()
             .clone();
 
@@ -173,7 +173,7 @@ pub fn dij(part_2: bool, vec_map: &Tile) -> u128 {
 
         //println!("Looking at Node: ({},{})", x, y);
         //Get only unvisited nodes
-        let neighbors = get_adjacent_nodes(&vec_map, x, y, max_x, max_y)
+        let neighbors = get_adjacent_nodes( x, y, max_x, max_y)
             .into_iter()
             //Unvisited
             .filter(|(x, y)| *dist_map.get_key_value(&(*x, *y)).unwrap().1 == i64::MAX - 50)
