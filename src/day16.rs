@@ -1,11 +1,19 @@
 //use std::collections::{HashMap, HashSet};
 use std::str;
 use std::str::FromStr;
+use log::debug;
 
 #[derive(Debug)]
 pub enum PacketType {
+    Invalid,
     Literal(i64),
-    Operator,
+    OperatorSum(i64),
+    OperatorProduct(i64),
+    OperatorMinimum(i64),
+    OperatorMaximum(i64),
+    OperatorGreaterThan(i64),
+    OperatorLessThan(i64),
+    OperatorEqual(i64),
 }
 
 #[derive(Debug)]
@@ -20,10 +28,24 @@ impl Packet {
     fn size_in_bits(&self) -> usize {
         self.length
             + self
-            .inner_packets
-            .iter()
-            .map(|p| p.size_in_bits())
-            .sum::<usize>()
+                .inner_packets
+                .iter()
+                .map(|p| p.size_in_bits())
+                .sum::<usize>()
+    }
+
+    fn get_value(&self) -> i64 {
+        match &self.packet_type {
+            PacketType::Literal(n) => *n,
+            PacketType::OperatorSum(n) => *n,
+            PacketType::OperatorProduct(n) => *n,
+            PacketType::OperatorMinimum(n) => *n,
+            PacketType::OperatorMaximum(n) => *n,
+            PacketType::OperatorGreaterThan(n) => *n,
+            PacketType::OperatorLessThan(n) => *n,
+            PacketType::OperatorEqual(n) => *n,
+            PacketType::Invalid => panic!(),
+        }
     }
 }
 
@@ -48,7 +70,7 @@ pub fn conv_to_bits(v: &str) -> String {
             'F' => "1111",
             _ => panic!("Invalid"),
         })
-    .collect::<String>()
+        .collect::<String>()
 }
 
 fn conv_to_char(v: &str) -> char {
@@ -97,23 +119,23 @@ impl FromStr for Packet {
             .parse::<i32>()
             .map_err(|_| "Bad Version".to_string())?;
 
-        //println!("Version: {}", version);
+        debug!("Version: {}", version);
 
         let raw_packet_type = it.clone().skip(3).take(3).collect::<String>();
         let packet_type = conv_to_char(&raw_packet_type[..]);
 
-        //println!("Packet_Type: {}", packet_type);
+        debug!("Packet_Type: {}", packet_type);
 
-        let mut packet_type_enum = PacketType::Operator;
+        let packet_type_enum;
 
         let mut sub_packets = vec![];
         let mut bit_count: usize = 6;
 
-        //println!("bits: {}", bits);
-        //println!("pos:  XXXYYY-----------------------------");
+        debug!("bits: {}", bits);
+        debug!("pos:  XXXYYY-----------------------------");
 
         if packet_type == '4' {
-            //println!("Literal version {} type {}", version, packet_type);
+            debug!("Literal version {} type {}", version, packet_type);
             //TODO: Check for what happens on a 32 bit literal
             //Literal value
             //Parse like so: groups of 5 bits, if 1, not last, if 0, then last
@@ -126,7 +148,7 @@ impl FromStr for Packet {
                     panic!();
                 }
 
-                //println!("Chunk {}", chunk);
+                debug!("Chunk {}", chunk);
                 let first = chunk.chars().next().unwrap();
                 val += &chunk[1..];
 
@@ -137,24 +159,24 @@ impl FromStr for Packet {
                 }
             }
             //May be more bits, ignor them
-            //println!("asdf {:?}",val);
+            debug!("asdf {:?}",val);
 
             packet_type_enum = PacketType::Literal(i64::from_str_radix(&val[..], 2).unwrap());
         } else {
             //Operator parsing
             //First bit is length type id
-            //println!("Operator parsing version: {} type {}", version, packet_type);
+            debug!("Operator parsing version: {} type {}", version, packet_type);
             let length_type_id = bits
                 .chars()
                 .nth(6)
                 .ok_or("Packet too short parsing operator")?;
 
-            //println!("length_type_id {}", length_type_id);
+            debug!("length_type_id {}", length_type_id);
             bit_count += 1; //length type id
 
             if length_type_id == '0' {
                 // 15 bits of how many bits
-                //println!("Parsing by length");
+                debug!("Parsing by length");
                 //Determine if it's even that long
                 if bits.chars().count() < 22 {
                     return Err("Truncated packet determining length".into());
@@ -162,7 +184,7 @@ impl FromStr for Packet {
                 //15 bits are a number that represents the total length in bits of the sub-packets
                 let length = u64::from_str_radix(&bits[7..(7 + 15)], 2).unwrap();
                 bit_count += 15;
-                //println!("Length: {}", length);
+                debug!("Length: {}", length);
                 // We know it's length bits, but we don't know how many packets are for each 27
                 // bits could contain 1 or more packets
                 let mut idx: usize = 0;
@@ -171,18 +193,17 @@ impl FromStr for Packet {
                     //TODO: Do I need to truncate the packet here if we are about to reach length?
                     //I think so, this fails some tests, but seems more correct
                     if let Ok(packet) = Packet::from_str(&bits[(22 + idx)..length as usize + 22]) {
-                    //if let Ok(packet) = Packet::from_str(&bits[(22 + idx)..]) {
+                        //if let Ok(packet) = Packet::from_str(&bits[(22 + idx)..]) {
                         idx += packet.size_in_bits();
-                        //println!("Packet size: {}", packet.size_in_bits());
-                        //println!("Size so far: {}", idx);
+                        debug!("Packet size: {}", packet.size_in_bits());
+                        debug!("Size so far: {}", idx);
                         sub_packets.push(packet);
                         if idx >= length as usize {
-                            //println!("Done parsing sub packets by length");
+                            debug!("Done parsing sub packets by length");
                             break;
                         }
                     } else {
-
-                        //println!("Insufficient bits");
+                        debug!("Insufficient bits");
                         //Add additional_bits
                         //TODO: Is this correct? Containing packets need to count the extra bits?
                         //bit_count += bits[22+idx..].chars().count();
@@ -197,27 +218,65 @@ impl FromStr for Packet {
                 }
                 let num_packets = i64::from_str_radix(&bits[7..(7 + 11)], 2).unwrap();
                 bit_count += 11;
-                //println!("Sub packets contained: {}", num_packets);
+                debug!("Sub packets contained: {}", num_packets);
                 let mut idx: usize = 0;
                 for _p_idx in 0..num_packets {
-                    //println!("Parsing packet number {} out of {}", _p_idx + 1, num_packets);
+                    debug!("Parsing packet number {} out of {}", _p_idx + 1, num_packets);
                     match Packet::from_str(&bits[18 + idx..]) {
                         Ok(packet) => {
                             idx += packet.size_in_bits();
-                        //println!("cPacket size: {}", packet.size_in_bits());
-                        //println!("cSize so far: {}", idx);
+                            debug!("cPacket size: {}", packet.size_in_bits());
+                            debug!("cSize so far: {}", idx);
                             sub_packets.push(packet);
-                        },
+                        }
                         //You need to count the extra bits as part of the message for containing
                         //packets?
                         //TODO: This really feels like it's a parse error if you get here, but the
                         //test fails without it.
                         //Err(_) => { bit_count += bits[18+idx..].chars().count(); break; },
-                        Err(_) => { panic!() },
+                        Err(_) => {
+                            panic!()
+                        }
                     }
                 }
-                //println!("Done parsing sub packets by num");
+                debug!("Done parsing sub packets by num");
             }
+
+            //Part 2, parse the stuff
+            packet_type_enum = match packet_type {
+                '0' => PacketType::OperatorSum(sub_packets.iter().map(|sp| sp.get_value()).sum()),
+                '1' => PacketType::OperatorProduct(
+                    sub_packets.iter().map(|sp| sp.get_value()).product(),
+                ),
+                '2' => PacketType::OperatorMinimum(
+                    sub_packets.iter().map(|sp| sp.get_value()).min().unwrap(),
+                ),
+                '3' => PacketType::OperatorMaximum(
+                    sub_packets.iter().map(|sp| sp.get_value()).max().unwrap(),
+                ),
+                '5' => PacketType::OperatorGreaterThan(
+                    if sub_packets[0].get_value() > sub_packets[1].get_value() {
+                        1
+                    } else {
+                        0
+                    },
+                ),
+                '6' => PacketType::OperatorLessThan(
+                    if sub_packets[0].get_value() < sub_packets[1].get_value() {
+                        1
+                    } else {
+                        0
+                    },
+                ),
+                '7' => PacketType::OperatorEqual(
+                    if sub_packets[0].get_value() == sub_packets[1].get_value() {
+                        1
+                    } else {
+                        0
+                    },
+                ),
+                _ => panic!(),
+            };
         }
 
         Ok(Packet {
@@ -239,7 +298,7 @@ fn sum_versions(packet: &Packet) -> u128 {
     let mut queue = vec![packet];
     while !queue.is_empty() {
         let packet = queue.pop().unwrap();
-        //println!("Packet: {:?}",packet);
+        debug!("Packet: {:?}",packet);
         version_sum += packet.version;
         for s_packet in packet.inner_packets.iter() {
             queue.push(s_packet);
@@ -250,22 +309,22 @@ fn sum_versions(packet: &Packet) -> u128 {
 
 #[aoc(day16, part1)]
 pub fn day16_part1(packet: &Packet) -> u128 {
+    env_logger::init(); 
     sum_versions(packet)
 }
 
 #[aoc(day16, part2)]
-pub fn day16_part2(vec_map: &Packet) -> u128 {
-    0
+pub fn day16_part2(packet: &Packet) -> u128 {
+    env_logger::init(); 
+    packet.get_value() as u128
 }
 
 #[cfg(test)]
 mod tests {
 
+    use test_env_log::test;
     use super::*;
 
-    fn get_test_input() -> &'static str {
-        ""
-    }
 
     #[test]
     fn day16_parse_literal() {
@@ -280,6 +339,8 @@ mod tests {
         }
     }
 
+    #[allow(deprecated)]
+
     #[test]
     fn day16_parse_type0() {
         let hex = "38006F45291200";
@@ -291,8 +352,8 @@ mod tests {
         let pack_zero = packet.inner_packets.get(0).unwrap();
         assert_eq!(pack_zero.size_in_bits(), 11);
         assert!(matches!(
-                pack_zero.packet_type,
-                super::PacketType::Literal(_)
+            pack_zero.packet_type,
+            super::PacketType::Literal(_)
         ));
         if let super::PacketType::Literal(v) = pack_zero.packet_type {
             assert_eq!(v, 10);
@@ -301,8 +362,8 @@ mod tests {
         let pack_one = packet.inner_packets.get(1).unwrap();
         assert_eq!(pack_one.size_in_bits(), 16);
         assert!(matches!(
-                pack_one.packet_type,
-                super::PacketType::Literal(_)
+            pack_one.packet_type,
+            super::PacketType::Literal(_)
         ));
         if let super::PacketType::Literal(v) = pack_one.packet_type {
             assert_eq!(v, 20);
@@ -320,8 +381,8 @@ mod tests {
         let pack_zero = packet.inner_packets.get(0).unwrap();
         assert_eq!(pack_zero.size_in_bits(), 11);
         assert!(matches!(
-                pack_zero.packet_type,
-                super::PacketType::Literal(_)
+            pack_zero.packet_type,
+            super::PacketType::Literal(_)
         ));
         if let super::PacketType::Literal(v) = pack_zero.packet_type {
             assert_eq!(v, 1);
@@ -329,8 +390,8 @@ mod tests {
         let pack_one = packet.inner_packets.get(1).unwrap();
         assert_eq!(pack_one.size_in_bits(), 11);
         assert!(matches!(
-                pack_one.packet_type,
-                super::PacketType::Literal(_)
+            pack_one.packet_type,
+            super::PacketType::Literal(_)
         ));
         if let super::PacketType::Literal(v) = pack_one.packet_type {
             assert_eq!(v, 2);
@@ -339,39 +400,108 @@ mod tests {
         let pack_three = packet.inner_packets.get(2).unwrap();
         assert_eq!(pack_three.size_in_bits(), 11);
         assert!(matches!(
-                pack_three.packet_type,
-                super::PacketType::Literal(_)
+            pack_three.packet_type,
+            super::PacketType::Literal(_)
         ));
         if let super::PacketType::Literal(v) = pack_three.packet_type {
             assert_eq!(v, 3);
         }
-
     }
 
     #[test]
     fn day16_parse_example1() {
         let hex = "8A004A801A8002F478";
         //represents an operator packet (version 4) which contains an operator packet (version 1) which contains an operator packet (version 5) which contains a literal value (version 6); this packet has a version sum of 16.
-        assert_eq!(sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),16);
+        assert_eq!(
+            sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),
+            16
+        );
     }
     #[test]
     fn day16_parse_example2() {
         let hex = "620080001611562C8802118E34";
         //620080001611562C8802118E34 represents an operator packet (version 3) which contains two sub-packets; each sub-packet is an operator packet that contains two literal values. This packet has a version sum of 12.
-        assert_eq!(sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),12);
+        assert_eq!(
+            sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),
+            12
+        );
     }
     #[test]
     fn day16_parse_example3() {
         let hex = "C0015000016115A2E0802F182340";
         //C0015000016115A2E0802F182340 has the same structure as the previous example, but the outermost packet uses a different length type ID. This packet has a version sum of 23.
-        assert_eq!(sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),23);
+        assert_eq!(
+            sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),
+            23
+        );
     }
 
     #[test]
     fn day16_parse_example4() {
         let hex = "A0016C880162017C3686B18A3D4780";
         //A0016C880162017C3686B18A3D4780 is an operator packet that contains an operator packet that contains an operator packet that contains five literal values; it has a version sum of 31
-        assert_eq!(sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),31);
+        assert_eq!(
+            sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),
+            31
+        );
+    }
+
+    
+    
+    #[test]
+    fn day16_part2_example1() {
+        let hex = "C200B40A82";
+        let packet = super::Packet::from_str(&conv_to_bits(hex)).unwrap();
+        assert_eq!(packet.get_value(), 3);
+    }
+    
+    #[test]
+    fn day16_part2_example2() {
+        let hex = "04005AC33890";
+        let packet = super::Packet::from_str(&conv_to_bits(hex)).unwrap();
+        assert_eq!(packet.get_value(), 54);
+    }
+    
+    #[test]
+    fn day16_part2_example3() {
+        let hex = "880086C3E88112";
+        let packet = super::Packet::from_str(&conv_to_bits(hex)).unwrap();
+        assert_eq!(packet.get_value(), 7);
+    }
+    
+    #[test]
+    fn day16_part2_example4() {
+        let hex = "CE00C43D881120";
+        let packet = super::Packet::from_str(&conv_to_bits(hex)).unwrap();
+        assert_eq!(packet.get_value(), 9);
+    }
+    
+    #[test]
+    fn day16_part2_example5() {
+        let hex = "D8005AC2A8F0";
+        let packet = super::Packet::from_str(&conv_to_bits(hex)).unwrap();
+        assert_eq!(packet.get_value(), 1);
+    }
+    
+    #[test]
+    fn day16_part2_example6() {
+        let hex = "F600BC2D8F";
+        let packet = super::Packet::from_str(&conv_to_bits(hex)).unwrap();
+        assert_eq!(packet.get_value(), 0);
+    }
+    
+    #[test]
+    fn day16_part2_example7() {
+        let hex = "9C005AC2F8F0";
+        let packet = super::Packet::from_str(&conv_to_bits(hex)).unwrap();
+        assert_eq!(packet.get_value(), 0);
+    }
+    
+    #[test]
+    fn day16_part2_example8() {
+        let hex = "9C0141080250320F1802104A08";
+        let packet = super::Packet::from_str(&conv_to_bits(hex)).unwrap();
+        assert_eq!(packet.get_value(), 1);
     }
 
 
