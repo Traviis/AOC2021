@@ -111,6 +111,7 @@ impl FromStr for Packet {
         let mut bit_count: usize = 6;
 
         if packet_type == '4' {
+            //TODO: Check for what happens on a 32 bit literal
             //Literal value
             //Parse like so: groups of 5 bits, if 1, not last, if 0, then last
             //You fucking heard me
@@ -169,6 +170,9 @@ impl FromStr for Packet {
                 }
             } else {
                 //This indicates how many packets there are following (but not their length...)
+                if bits.chars().count() < 18 {
+                    return Err("Truncated packet determining length".into());
+                }
                 let num_packets = i64::from_str_radix(&bits[7..(7 + 11)], 2).unwrap();
                 //println!("Sub packets contained: {}", num_packets);
                 let mut idx: usize = 0;
@@ -178,7 +182,7 @@ impl FromStr for Packet {
                         idx += packet.size_in_bits();
                         sub_packets.push(packet);
                     } else {
-                        panic!(); //We know how many packets there are supposed to be, if we fail to parse, that means this is bad data
+                        //panic!(); //We know how many packets there are supposed to be, if we fail to parse, that means this is bad data
                     }
                 }
             }
@@ -198,8 +202,7 @@ fn day16_parse(input: &str) -> Packet {
     Packet::from_str(&conv_to_bits(input)).unwrap()
 }
 
-#[aoc(day16, part1)]
-pub fn day16_part1(packet: &Packet) -> u128 {
+fn sum_versions(packet: &Packet) -> u128 {
     let mut version_sum = 0;
     let mut queue = vec![packet];
     while !queue.is_empty() {
@@ -211,6 +214,11 @@ pub fn day16_part1(packet: &Packet) -> u128 {
         }
     }
     version_sum as u128
+}
+
+#[aoc(day16, part1)]
+pub fn day16_part1(packet: &Packet) -> u128 {
+    sum_versions(packet)
 }
 
 #[aoc(day16, part2)]
@@ -312,35 +320,27 @@ mod tests {
     fn day16_parse_example1() {
         let hex = "8A004A801A8002F478";
         //represents an operator packet (version 4) which contains an operator packet (version 1) which contains an operator packet (version 5) which contains a literal value (version 6); this packet has a version sum of 16.
-        panic!()
+        assert_eq!(sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),16);
     }
     #[test]
     fn day16_parse_example2() {
         let hex = "620080001611562C8802118E34";
         //620080001611562C8802118E34 represents an operator packet (version 3) which contains two sub-packets; each sub-packet is an operator packet that contains two literal values. This packet has a version sum of 12.
-        panic!()
+        assert_eq!(sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),12);
     }
     #[test]
     fn day16_parse_example3() {
         let hex = "C0015000016115A2E0802F182340";
 //C0015000016115A2E0802F182340 has the same structure as the previous example, but the outermost packet uses a different length type ID. This packet has a version sum of 23.
-        panic!()
+        assert_eq!(sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),23);
     }
 
     #[test]
     fn day16_parse_example4() {
         let hex = "A0016C880162017C3686B18A3D4780";
         //A0016C880162017C3686B18A3D4780 is an operator packet that contains an operator packet that contains an operator packet that contains five literal values; it has a version sum of 31
-        panic!()
-
-
-    #[test]
-    fn day16_part1() {
-        //assert_eq!(super::day16_part1(&day16_parse(get_test_input())), 40);
+        assert_eq!(sum_versions(&super::Packet::from_str(&conv_to_bits(hex)).unwrap()),31);
     }
 
-    #[test]
-    fn day16_part2() {
-        //assert_eq!(super::day16_part2(&day16_parse(get_test_input())), 315);
-    }
+
 }
