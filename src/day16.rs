@@ -322,7 +322,7 @@ pub fn day16_part2(packet: &Packet) -> u128 {
 #[cfg(test)]
 mod tests {
 
-    use test_env_log::test;
+    use test_log::test;
     use super::*;
 
 
