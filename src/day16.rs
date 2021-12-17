@@ -85,7 +85,6 @@ impl FromStr for Packet {
         //Don't assume it's bits
         //let bits = conv_to_bits(s);
         let bits = bits.to_string();
-
         let it = bits.chars();
 
         if it.clone().count() < 6 {
@@ -111,14 +110,13 @@ impl FromStr for Packet {
         let mut bit_count: usize = 6;
 
         //println!("bits: {}", bits);
-        //println!("pos:  XXXYYYZ-----------------------------");
+        //println!("pos:  XXXYYY-----------------------------");
 
         if packet_type == '4' {
-            //println!("Literal");
+            //println!("Literal version {} type {}", version, packet_type);
             //TODO: Check for what happens on a 32 bit literal
             //Literal value
             //Parse like so: groups of 5 bits, if 1, not last, if 0, then last
-            //You fucking heard me
             let mut val = String::new();
             let mut chunks = bits[6..].as_bytes().chunks(5);
             loop {
@@ -145,22 +143,25 @@ impl FromStr for Packet {
         } else {
             //Operator parsing
             //First bit is length type id
-            //println!("Operator parsing");
+            //println!("Operator parsing version: {} type {}", version, packet_type);
             let length_type_id = bits
                 .chars()
                 .nth(6)
                 .ok_or("Packet too short parsing operator")?;
 
             //println!("length_type_id {}", length_type_id);
+            bit_count += 1; //length type id
 
             if length_type_id == '0' {
+                // 15 bits of how many bits
                 //println!("Parsing by length");
                 //Determine if it's even that long
                 if bits.chars().count() < 22 {
                     return Err("Truncated packet determining length".into());
                 }
                 //15 bits are a number that represents the total length in bits of the sub-packets
-                let length = usize::from_str_radix(&bits[7..(7 + 15)], 2).unwrap();
+                let length = u64::from_str_radix(&bits[7..(7 + 15)], 2).unwrap();
+                bit_count += 15;
                 //println!("Length: {}", length);
                 // We know it's length bits, but we don't know how many packets are for each 27
                 // bits could contain 1 or more packets
@@ -169,26 +170,33 @@ impl FromStr for Packet {
                 loop {
                     //TODO: Do I need to truncate the packet here if we are about to reach length?
                     //I think so, this fails some tests, but seems more correct
-                    if let Ok(packet) = Packet::from_str(&bits[(22 + idx)..length + 22]) {
+                    if let Ok(packet) = Packet::from_str(&bits[(22 + idx)..length as usize + 22]) {
+                    //if let Ok(packet) = Packet::from_str(&bits[(22 + idx)..]) {
                         idx += packet.size_in_bits();
+                        //println!("Packet size: {}", packet.size_in_bits());
+                        //println!("Size so far: {}", idx);
                         sub_packets.push(packet);
-                        if idx > length as usize {
+                        if idx >= length as usize {
+                            //println!("Done parsing sub packets by length");
                             break;
                         }
                     } else {
 
+                        //println!("Insufficient bits");
                         //Add additional_bits
                         //TODO: Is this correct? Containing packets need to count the extra bits?
-                        bit_count += bits[22+idx..].chars().count();
+                        //bit_count += bits[22+idx..].chars().count();
                         break; //hit traililng
                     }
                 }
             } else {
+                //11 bits of how many packets
                 //This indicates how many packets there are following (but not their length...)
                 if bits.chars().count() < 18 {
                     return Err("Truncated packet determining number of packets".into());
                 }
                 let num_packets = i64::from_str_radix(&bits[7..(7 + 11)], 2).unwrap();
+                bit_count += 11;
                 //println!("Sub packets contained: {}", num_packets);
                 let mut idx: usize = 0;
                 for _p_idx in 0..num_packets {
@@ -196,6 +204,8 @@ impl FromStr for Packet {
                     match Packet::from_str(&bits[18 + idx..]) {
                         Ok(packet) => {
                             idx += packet.size_in_bits();
+                        //println!("cPacket size: {}", packet.size_in_bits());
+                        //println!("cSize so far: {}", idx);
                             sub_packets.push(packet);
                         },
                         //You need to count the extra bits as part of the message for containing
@@ -206,6 +216,7 @@ impl FromStr for Packet {
                         Err(_) => { panic!() },
                     }
                 }
+                //println!("Done parsing sub packets by num");
             }
         }
 
