@@ -276,7 +276,63 @@ mod tests {
         assert!(packet.is_ok());
         let packet = packet.unwrap();
         assert_eq!(packet.inner_packets.iter().count(), 3);
+
+        let pack_zero = packet.inner_packets.get(0).unwrap();
+        assert_eq!(pack_zero.size_in_bits(), 11);
+        assert!(matches!(
+            pack_zero.packet_type,
+            super::PacketType::Literal(_)
+        ));
+        if let super::PacketType::Literal(v) = pack_zero.packet_type {
+            assert_eq!(v, 1);
+        }
+        let pack_one = packet.inner_packets.get(1).unwrap();
+        assert_eq!(pack_one.size_in_bits(), 11);
+        assert!(matches!(
+            pack_one.packet_type,
+            super::PacketType::Literal(_)
+        ));
+        if let super::PacketType::Literal(v) = pack_one.packet_type {
+            assert_eq!(v, 2);
+        }
+
+        let pack_three = packet.inner_packets.get(2).unwrap();
+        assert_eq!(pack_three.size_in_bits(), 11);
+        assert!(matches!(
+            pack_three.packet_type,
+            super::PacketType::Literal(_)
+        ));
+        if let super::PacketType::Literal(v) = pack_three.packet_type {
+            assert_eq!(v, 3);
+        }
+
     }
+
+    #[test]
+    fn day16_parse_example1() {
+        let hex = "8A004A801A8002F478";
+        //represents an operator packet (version 4) which contains an operator packet (version 1) which contains an operator packet (version 5) which contains a literal value (version 6); this packet has a version sum of 16.
+        panic!()
+    }
+    #[test]
+    fn day16_parse_example2() {
+        let hex = "620080001611562C8802118E34";
+        //620080001611562C8802118E34 represents an operator packet (version 3) which contains two sub-packets; each sub-packet is an operator packet that contains two literal values. This packet has a version sum of 12.
+        panic!()
+    }
+    #[test]
+    fn day16_parse_example3() {
+        let hex = "C0015000016115A2E0802F182340";
+//C0015000016115A2E0802F182340 has the same structure as the previous example, but the outermost packet uses a different length type ID. This packet has a version sum of 23.
+        panic!()
+    }
+
+    #[test]
+    fn day16_parse_example4() {
+        let hex = "A0016C880162017C3686B18A3D4780";
+        //A0016C880162017C3686B18A3D4780 is an operator packet that contains an operator packet that contains an operator packet that contains five literal values; it has a version sum of 31
+        panic!()
+
 
     #[test]
     fn day16_part1() {
