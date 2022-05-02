@@ -1,32 +1,36 @@
+use std::str::FromStr;
 
-enum SNumber {
-    Pair(SNumber,SNumber),
+pub enum SNumber {
+    Pair(Box<SNumber>,Box<SNumber>),
     Lit(u64)
 }
 
 impl FromStr for SNumber {
     type Err = String;
 
-    fn from_str(line: &str) -> Result<Self, Self:Err> {
+    fn from_str(line: &str) -> Result<Self, Self::Err> {
         //Iterate over chars, if you see a `[` then it's the start of a new Snumber, if it's a
         //number literal, then it's part of the SNumber, if it's another `[` it's the start of a
         //nested number, if it's a `]` then we finished the number (so return it). Return from each
         //recursive call the size in chars to skip ahead
-        Err("Didn't impl yet")
+        Err("Didn't impl yet".to_string())
     }
 }
 
 #[aoc_generator(day18)]
-fn day18_parse(input: &str) -> (i64, i64, i64, i64) {
-    input.lines().map(|line| SNumber::from_str(line)).collect<Vec<SNumber>>();
+fn day18_parse(input: &str) -> Result<Vec<SNumber>,String> {
+    //What's the syntax to colllect into a result again?
+    Ok(input.lines().map(|line| SNumber::from_str(line).unwrap() ).collect::<Vec<_>>())
+
 }
 
 #[aoc(day18, part1)]
-pub fn day18_part1((min_x, max_x, min_y, max_y): &(i64, i64, i64, i64)) -> i64 {
+pub fn day18_part1(snumbers: &Vec<SNumber> ) -> i64 {
+    0
 }
 
 #[aoc(day18, part2)]
-pub fn day18_part2((min_x, max_x, min_y, max_y): &(i64, i64, i64, i64)) -> u128 {
+pub fn day18_part2(snumbers: &Vec<SNumber>) -> u128 {
     0
 }
 
