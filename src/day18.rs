@@ -1,4 +1,4 @@
-use std::{str::FromStr, cmp::min};
+use std::str::FromStr;
 
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum SNumber {
@@ -8,7 +8,6 @@ pub enum SNumber {
 
 /// Find substring that is enclosed by the brackets (but maintain internal brackets)
 fn find_enclosing_brackets(val: &str) -> &str {
-    println!("feb: {}", val);
     let mut chars = val.chars();
     assert_eq!('[',chars.next().unwrap());
 
@@ -34,25 +33,16 @@ impl FromStr for SNumber {
     type Err = String;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        //Iterate over chars, if you see a `[` then it's the start of a new Snumber, if it's a
-        //number literal, then it's part of the SNumber, if it's another `[` it's the start of a
-        //nested number, if it's a `]` then we finished the number (so return it). Return from each
-        //recursive call the size in chars to skip ahead
         Ok(SNumber::compose(line))
 
     }
 
-//pub enum SNumber {
-//    Pair(Box<SNumber>,Box<SNumber>),
-//    Lit(u64)
-//}
 
 }
 
 impl SNumber {
 
     fn len(self : &Self) -> usize {
-        // [ + ] + , -- ? That factors in somehow
         match self {
             SNumber::Lit(lit) => lit.to_string().len(),
             SNumber::Pair(p1,p2) => p1.len() + p2.len() + 3, //Comma and brackets
@@ -62,11 +52,13 @@ impl SNumber {
     //This snailfish homework is about addition. To add two snailfish numbers, form a pair from the
     //left and right parameters of the addition operator. For example, [1,2] + [[3,4],5] becomes
     //[[1,2],[[3,4],5]].
+    //TODO: Test
     fn add(self: &Self, other: &Self) -> Self {
         //ugh
         SNumber::reduce(&SNumber::Pair(Box::new(self.clone()), Box::new(other.clone())))
     }
 
+    //TODO: Test
     fn reduce(self: &Self) -> Self {
         //To reduce a snailfish number, you must repeatedly do the first action in this list that
         //applies to the snailfish number: 
@@ -112,11 +104,13 @@ impl SNumber {
         }
     }
 
-    fn compose(line: &str) -> Self {
+    fn compose(enc_str: &str) -> Self {
 
-        //let enc_str = find_enclosing_brackets(line);
-        let enc_str = line;
-        println!("enc_str: {}", enc_str);
+        //Iterate over chars, if you see a `[` then it's the start of a new Snumber, if it's a
+        //number literal, then it's part of the SNumber, if it's another `[` it's the start of a
+        //nested number, if it's a `]` then we finished the number (so return it). Return from each
+        //recursive call the size in chars to skip ahead
+        //println!("enc_str: {}", enc_str);
         let mut chars = enc_str.chars();
         assert_eq!('[', chars.next().unwrap());
 
@@ -131,23 +125,24 @@ impl SNumber {
             SNumber::Lit(val.parse::<i64>().unwrap())
         };
 
-        println!("First_val {:?} size: {} chars: {:?}",first_val, first_val.len(), chars);
+        //println!("First_val {:?} size: {} chars: {:?}",first_val, first_val.len(), chars);
         for _ in 0..first_val.len()-1 {
             chars.next().unwrap();
         }
         //assert_eq!(',', chars.next().unwrap());
 
-        println!("After stepping: {:?}", chars);
+        //println!("After stepping: {:?}", chars);
 
         let mut c_next = chars.next().unwrap();
-        println!("c_next {}", c_next);
+        //println!("c_next {}", c_next);
 
-        //This is a disgusting hack, I need to rethink this
-        if c_next == ',' {
+        //If the first part was a pair, go ahead and advance one more for the comma
+        if let SNumber::Pair(_,_) = first_val {
             c_next = chars.next().unwrap();
         }
 
         let second_val : SNumber = if c_next == '[' {
+            //+2 for the comma
             SNumber::compose(find_enclosing_brackets(&enc_str[2+first_val.len()..]))
         } else {
             //Is a number literal
@@ -155,13 +150,8 @@ impl SNumber {
             SNumber::Lit(val.parse::<i64>().unwrap())
         };
 
-        //SNumber::Pair(Box::new(first_val), Box::new(second_val))
         SNumber::Pair(Box::new(first_val), Box::new(second_val))
     }
-}
-
-fn floor(n: i64) -> i64 {
-    todo!()
 }
 
 #[aoc_generator(day18)]
@@ -215,9 +205,9 @@ mod tests {
 
         let inp = "[[[[1,2],[3,4]],[[5,6],[7,8]]],9]";
         println!("{:?}", SNumber::from_str(inp));
-//Ok(Pair(Pair(Pair(Pair(Lit(1), Lit(2)), Pair(Lit(3), Lit(4))), Pair(Pair(Lit(5), Lit(6)), Pair(Lit(7), Lit(8)))), Lit(9))
         let inp2 = "[[[[1,3],[5,3]],[[1,3],[8,7]]],[[[4,9],[6,9]],[[8,2],[7,3]]]]";
         println!("{:?}", SNumber::from_str(inp2));
+        //TODO: Actually check validity
     }
 
     #[test]
