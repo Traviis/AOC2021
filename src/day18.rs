@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::fmt;
 
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum SNumber {
@@ -27,6 +28,17 @@ fn find_enclosing_brackets(val: &str) -> &str {
     }
 
     &val[0..len]
+}
+
+impl fmt::Display for SNumber {
+
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SNumber::Lit(l) => write!(f, "{}", l),
+            SNumber::Pair(p1,p2) => write!(f, "[{},{}]", p1, p2)
+        }
+    }
+
 }
 
 impl FromStr for SNumber {
@@ -89,19 +101,52 @@ impl SNumber {
         // if no action applied, the number is reduced
         
         // Need function that finds next Literal number to "the right" is this just DFS again 
-        todo!()
+        self.clone()
     }
 
-    //TODO: Needs tests
+    //Splitting occurs when you take the left most number and then return it split. Initial
+    //implementation can be lazy and descend agressively until I find one, replacing the value at
+    //every step
     fn split(&self) -> Self {
+
+        //Descend looking for a literal > 10; this is a DFS search that always descends down the
+        //"left" path
+        match self {
+            //TODO: Box allocs might be innefecient here
+            //NOTE: This is done left to right, thus, this should work
+            SNumber::Pair(p_1, p_2) => SNumber::Pair(Box::new(p_1.split()), Box::new(p_2.split())),
+            //TODO: Use a match guard here instead of a nested if statement
+            SNumber::Lit(n) =>  {
+                if *n >= 10 {
+                  SNumber::Pair(
+                        Box::new(SNumber::Lit((*n as f64/2.0).floor() as i64)), 
+                        Box::new(SNumber::Lit((*n as f64/2.0).ceil() as i64))
+                        )
+                } else {
+                    SNumber::Lit(*n)
+                }
+            }
+        }
+
+
+/*
+        match self {
+            SNumber::Pair(p_1, p_2) => {
+                if let SNumber::Lit(s_p_1) = p_1 && s_p_1 >= &10 { 
+                    
+                }
+            }
+            SNumber::Lit(_) => panic!("Invalid split on {:?}", self)
+        }
         if let SNumber::Lit(n) = self {
         return SNumber::Pair(
                 Box::new(SNumber::Lit((*n as f64/2.0).floor() as i64)), 
                 Box::new(SNumber::Lit((*n as f64/2.0).ceil() as i64))
                 );
         } else {
-            panic!("Invalid split on {:?}", self);
+            //panic!("Invalid split on {:?}", self);
         }
+        */
     }
 
     fn compose(enc_str: &str) -> Self {
@@ -114,7 +159,6 @@ impl SNumber {
         let mut chars = enc_str.chars();
         assert_eq!('[', chars.next().unwrap());
 
-        //let inp = "[[[[1,2],[3,4]],[[5,6],[7,8]]],9]";
         let c_next = chars.next().unwrap();
 
         let first_val : SNumber = if c_next == '[' {
@@ -125,9 +169,14 @@ impl SNumber {
             SNumber::Lit(val.parse::<i64>().unwrap())
         };
 
+        //println!("num_1 {} len: {}", first_val, first_val.len());
+
         //println!("First_val {:?} size: {} chars: {:?}",first_val, first_val.len(), chars);
-        for _ in 0..first_val.len()-1 {
-            chars.next().unwrap();
+        //CHECK: Is -2 correct? 
+        if first_val.len() >= 2 {
+            for _ in 0..first_val.len()-2 {
+                chars.next().unwrap();
+            }
         }
         //assert_eq!(',', chars.next().unwrap());
 
@@ -147,6 +196,7 @@ impl SNumber {
         } else {
             //Is a number literal
             let val = String::from(c_next) + &chars.by_ref().take_while(|c| *c != ',' && *c != ']').collect::<String>();
+         //   println!("Double digit number: {}", val);
             SNumber::Lit(val.parse::<i64>().unwrap())
         };
 
@@ -174,8 +224,54 @@ pub fn day18_part2(snumbers: &Vec<SNumber>) -> u128 {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+
     use super::*;
     use test_log::test;
+
+    #[test]
+    fn day18_split() {
+
+        let mut test_map = HashMap::new();
+        test_map.insert("[10,0]", "[[5,5],0]");
+        test_map.insert("[11,0]", "[[5,6],0]");
+        test_map.insert("[12,0]", "[[6,6],0]");
+        test_map.insert("[0,11]", "[0,[5,6]]");
+        test_map.insert("[1,[11,0]]", "[1,[[5,6],0]]");
+
+        for (k,v) in test_map {
+            let key_s = SNumber::from_str(k).unwrap();
+            println!("{}", key_s );
+            let split = key_s.split();
+            println!("{} => {}", key_s, split);
+            assert_eq!(format!("{}", split), v);
+        }
+
+
+        // To split a regular number, replace it with a pair; the left element of the pair should
+        // be the regular number divided by two and rounded down, while the right element of the
+        // pair should be the regular number divided by two and rounded up. For example, 10 becomes
+        // [5,5], 11 becomes [5,6], 12 becomes [6,6], and so on.
+    }
+
+    #[test]
+    fn day18_addition_simple_test() {
+        let num_1 = SNumber::from_str("[1,2]").unwrap();
+        let num_2 = SNumber::from_str("[[3,4],5]").unwrap();
+
+        println!("Num_1: {}", &num_1);
+        println!("Num_2: {}", &num_2);
+
+        let my_res = num_1.add(&num_2);
+        println!("my_res: {}", &my_res);
+
+        let result = "[[1,2],[[3,4],5]]";
+        //Check formatting, but also check if full equal works
+        assert_eq!(format!("{}",my_res), format!("{}", result));
+        let expected = SNumber::from_str(result).unwrap();
+        assert_eq!(expected, my_res);
+
+    }
 
     #[test]
     fn day18_part1_parse_simple() {
@@ -204,10 +300,17 @@ mod tests {
     fn day18_part1_parse_long() {
 
         let inp = "[[[[1,2],[3,4]],[[5,6],[7,8]]],9]";
-        println!("{:?}", SNumber::from_str(inp));
+        let s_inp = SNumber::from_str(inp).unwrap();
+        println!("{:?}", inp);
+
+        assert_eq!(inp, format!("{}", s_inp));
+
         let inp2 = "[[[[1,3],[5,3]],[[1,3],[8,7]]],[[[4,9],[6,9]],[[8,2],[7,3]]]]";
-        println!("{:?}", SNumber::from_str(inp2));
-        //TODO: Actually check validity
+        let s_inp2 = SNumber::from_str(inp2).unwrap();
+        println!("{} =? {}", inp2, s_inp2);
+        assert_eq!(inp2, format!("{}", s_inp2));
+
+
     }
 
     #[test]
