@@ -113,8 +113,16 @@ impl SNumber {
         //"left" path
         match self {
             //TODO: Box allocs might be innefecient here
-            //NOTE: This is done left to right, thus, this should work
-            SNumber::Pair(p_1, p_2) => SNumber::Pair(Box::new(p_1.split()), Box::new(p_2.split())),
+            SNumber::Pair(p_1, p_2) => {
+
+            let new_p1 = p_1.split();
+            if &new_p1 != p_1.as_ref() {
+                return SNumber::Pair(Box::new(new_p1),
+                                     p_2.clone());
+            } else {
+                    return SNumber::Pair(Box::new(new_p1), Box::new(p_2.split()));
+            }
+            }
             //TODO: Use a match guard here instead of a nested if statement
             SNumber::Lit(n) =>  {
                 if *n >= 10 {
@@ -157,30 +165,32 @@ impl SNumber {
         //recursive call the size in chars to skip ahead
         //println!("enc_str: {}", enc_str);
         let mut chars = enc_str.chars();
+        //TODO: Something odd here; Miscounting?
         assert_eq!('[', chars.next().unwrap());
 
         let c_next = chars.next().unwrap();
 
+        println!("Initial {:?}", chars);
         let first_val : SNumber = if c_next == '[' {
-            SNumber::compose(find_enclosing_brackets(&enc_str[1..enc_str.len()-1]))
+            SNumber::compose(find_enclosing_brackets(&enc_str[1..enc_str.chars().count()-1]))
         } else {
             //Is a number literal
             let val = String::from(c_next) + &chars.by_ref().take_while(|c| *c != ',').collect::<String>();
             SNumber::Lit(val.parse::<i64>().unwrap())
         };
 
-        //println!("num_1 {} len: {}", first_val, first_val.len());
+       println!("num_1 {} len: {} charset: {:?}", first_val, first_val.len(), chars);
 
         //println!("First_val {:?} size: {} chars: {:?}",first_val, first_val.len(), chars);
-        //CHECK: Is -2 correct? 
-        if first_val.len() >= 2 {
-            for _ in 0..first_val.len()-2 {
-                chars.next().unwrap();
-            }
+        for _ in 0..first_val.len()-1 {
+            chars.next().unwrap();
+            println!("Step! {:?}", chars);
         }
         //assert_eq!(',', chars.next().unwrap());
+        //TODO: Can I do this?
+        //chars.by_ref().take_while(|c| *c == ',' || *c == ']'); //skip until next
 
-        //println!("After stepping: {:?}", chars);
+        println!("After stepping: {:?}", chars);
 
         let mut c_next = chars.next().unwrap();
         //println!("c_next {}", c_next);
@@ -189,14 +199,16 @@ impl SNumber {
         if let SNumber::Pair(_,_) = first_val {
             c_next = chars.next().unwrap();
         }
+        println!("After stepping2: {:?}", chars);
 
         let second_val : SNumber = if c_next == '[' {
             //+2 for the comma
             SNumber::compose(find_enclosing_brackets(&enc_str[2+first_val.len()..]))
         } else {
             //Is a number literal
+            //TODO: Do I need to add the c_next back?
             let val = String::from(c_next) + &chars.by_ref().take_while(|c| *c != ',' && *c != ']').collect::<String>();
-         //   println!("Double digit number: {}", val);
+            println!("Double digit number: {}", val);
             SNumber::Lit(val.parse::<i64>().unwrap())
         };
 
@@ -233,25 +245,26 @@ mod tests {
     fn day18_split() {
 
         let mut test_map = HashMap::new();
-        test_map.insert("[10,0]", "[[5,5],0]");
-        test_map.insert("[11,0]", "[[5,6],0]");
-        test_map.insert("[12,0]", "[[6,6],0]");
-        test_map.insert("[0,11]", "[0,[5,6]]");
+        //test_map.insert("[10,0]", "[[5,5],0]");
+        //test_map.insert("[11,0]", "[[5,6],0]");
+        //test_map.insert("[12,0]", "[[6,6],0]");
+        //test_map.insert("[5,0]", "[5,0]");
+        //test_map.insert("[0,11]", "[0,[5,6]]");
         test_map.insert("[1,[11,0]]", "[1,[[5,6],0]]");
 
+        //Split should only do a SINGLE action per invocation
+        //test_map.insert("[1,[11,10]]", "[1,[[5,6],10]]");
+        //test_map.insert( "[1,[[5,6],10]]", "[1,[[5,6],[5,5]]]");
+
+
         for (k,v) in test_map {
+            println!("Orig: {}", k);
             let key_s = SNumber::from_str(k).unwrap();
-            println!("{}", key_s );
+            println!("Orig Parsed: {}", key_s );
             let split = key_s.split();
             println!("{} => {}", key_s, split);
             assert_eq!(format!("{}", split), v);
         }
-
-
-        // To split a regular number, replace it with a pair; the left element of the pair should
-        // be the regular number divided by two and rounded down, while the right element of the
-        // pair should be the regular number divided by two and rounded up. For example, 10 becomes
-        // [5,5], 11 becomes [5,6], 12 becomes [6,6], and so on.
     }
 
     #[test]
