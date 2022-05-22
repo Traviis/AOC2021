@@ -9,6 +9,7 @@ pub enum SNumber {
 
 /// Find substring that is enclosed by the brackets (but maintain internal brackets)
 fn find_enclosing_brackets(val: &str) -> &str {
+    println!("EncBrack: {:?}", val);
     let mut chars = val.chars();
     assert_eq!('[',chars.next().unwrap());
 
@@ -172,7 +173,7 @@ impl SNumber {
 
         println!("Initial {:?}", chars);
         let first_val : SNumber = if c_next == '[' {
-            SNumber::compose(find_enclosing_brackets(&enc_str[1..enc_str.chars().count()-1]))
+            SNumber::compose(find_enclosing_brackets(&enc_str[0..enc_str.chars().count()-1]))
         } else {
             //Is a number literal
             let val = String::from(c_next) + &chars.by_ref().take_while(|c| *c != ',').collect::<String>();
@@ -186,9 +187,6 @@ impl SNumber {
             chars.next().unwrap();
             println!("Step! {:?}", chars);
         }
-        //assert_eq!(',', chars.next().unwrap());
-        //TODO: Can I do this?
-        //chars.by_ref().take_while(|c| *c == ',' || *c == ']'); //skip until next
 
         println!("After stepping: {:?}", chars);
 
@@ -196,14 +194,15 @@ impl SNumber {
         //println!("c_next {}", c_next);
 
         //If the first part was a pair, go ahead and advance one more for the comma
+        let mut steps = 1;
         if let SNumber::Pair(_,_) = first_val {
             c_next = chars.next().unwrap();
+            steps += 1;
         }
         println!("After stepping2: {:?}", chars);
 
         let second_val : SNumber = if c_next == '[' {
-            //+2 for the comma
-            SNumber::compose(find_enclosing_brackets(&enc_str[2+first_val.len()..]))
+            SNumber::compose(find_enclosing_brackets(&enc_str[steps+first_val.len()..]))
         } else {
             //Is a number literal
             //TODO: Do I need to add the c_next back?
